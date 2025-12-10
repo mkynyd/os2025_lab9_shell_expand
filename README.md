@@ -1,3 +1,5 @@
+#  0. 请务必将src/CMakeLists.txt中的TOOLCHAIN_PATH的路径修改为实际路径！
+
 ## 1. 目录结构概览
 
 本仓库主要目录如下（仅列出与 Lab9 相关的部分）：
