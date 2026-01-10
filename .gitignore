@@ -1,6 +1,7 @@
 # ========== 忽略 build 输出 / 中间文件 /二进制 /可执行文件 ==========
 /build/                # 忽略 build 目录及其所有内容
 build/                 # 忽略 build 目录（如果在项目根目录外部生成）
+build
 *.o                    # 忽略所有 .o 对象文件
 *.obj                  # 忽略 .obj 文件 (如果有的话)
 /*.elf                 # 忽略根目录下 .elf 可执行／镜像文件
@@ -52,3 +53,5 @@ build_logs/            # 与上类似
 
 /# ========== 保留 /允许跟踪 ========== 
 # src/、include/、kernel/、bsp/、脚本 (.sh, .c, .ld, CMakeLists.txt 等) —— 都是源码 /必要文件，不应忽略。
+cleanup_build.sh
+collaboration/
