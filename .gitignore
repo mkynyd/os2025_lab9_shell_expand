@@ -50,8 +50,9 @@ build_logs/            # 与上类似
 *.pem                  # 私钥 /证书文件
 .idea/                 # IDE 配置 (已列出)
 /.vscode/              # 编辑器配置 (已列出)
-collaboration          # 团队协作 /本地配置文件夹
+collaboration/         # 团队协作 /本地配置文件夹
 cleanup_build.sh       # 本地清理脚本
+docs/                  # 本地文档 /私有文档
 
 /# ========== 保留 /允许跟踪 ========== 
 # src/、include/、kernel/、bsp/、脚本 (.sh, .c, .ld, CMakeLists.txt 等) —— 都是源码 /必要文件，不应忽略。
