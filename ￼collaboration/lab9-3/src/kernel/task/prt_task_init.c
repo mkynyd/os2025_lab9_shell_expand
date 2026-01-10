@@ -185,7 +185,7 @@ OS_SEC_L4_TEXT void OsTskCreateTcbInit(uintptr_t stackPtr, struct TskInitParam *
     taskCb->stackSize = curStackSize;
     taskCb->taskSem = NULL;
     taskCb->priority = initParam->taskPrio;
-    taskCb->originalPriority = initParam->taskPrio;
+    taskCb->originalPriority = initParam->taskPrio;  // 初始化原始优先级
     taskCb->taskEntry = initParam->taskEntry;
 #if defined(OS_OPTION_EVENT)
     taskCb->event = 0;
@@ -436,6 +436,7 @@ OS_SEC_L4_TEXT U32 OsActivate(void)
     // 正常情况不应执行到此
     return OS_ERRNO_TSK_ACTIVE_FAILED;
 }
+
 
 
 

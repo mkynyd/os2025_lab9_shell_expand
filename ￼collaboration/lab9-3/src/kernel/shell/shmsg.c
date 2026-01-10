@@ -3,12 +3,13 @@
 #include "os_attr_armv8_external.h"
 #include "prt_task.h"
 #include "prt_sem.h"
-#include "ipc_ring_demo.h"
 
 extern SemHandle sem_uart_rx;
 extern U32 PRT_Printf(const char *format, ...);
 extern void OsDisplayTasksInfo(void);
 extern void OsDisplayCurTick(void);
+
+/* 优先级反转演示函数 */
 extern U32 CreatePriorityInversionDemo(void);
 
 /* 来自链接脚本 hi3093.ld 中的段边界符号 */
@@ -58,8 +59,6 @@ static void ShellCmd_Top(const char *args);
 static void ShellCmd_Tick(const char *args);
 static void ShellCmd_MemStat(const char *args);
 static void ShellCmd_SemStat(const char *args);
-static void ShellCmd_Ipc(const char *args);
-static void ShellCmd_Ipcs(const char *args);
 static void ShellCmd_Demo(const char *args);
 static void ShellCmd_Quit(const char *args);
 
@@ -71,8 +70,6 @@ static const ShellCmd g_shellCmds[] = {
     { "tick",    "show current system tick",               ShellCmd_Tick    },
     { "memstat", "show memory layout statistics",          ShellCmd_MemStat },
     { "semstat", "show semaphore statistics",              ShellCmd_SemStat },
-    { "ipc",     "start ipc ring-buffer demo",             ShellCmd_Ipc     },
-    { "ipcs",    "show ipc ring-buffer statistics",        ShellCmd_Ipcs    },
     { "demo",    "run priority inheritance demonstration", ShellCmd_Demo    },
     { "quit",    "how to exit QEMU",                       ShellCmd_Quit    },
 };
@@ -177,49 +174,11 @@ static void ShellCmd_SemStat(const char *args)
     OsDisplaySemStat();
 }
 
-static void ShellCmd_Ipc(const char *args)
-{
-    (void)args;
-    U32 ret = IPC_RingDemoStart();
-    if (ret != OS_OK) {
-        PRT_Printf("[ipc] start failed: 0x%x\n", ret);
-    }
-}
-
-static void ShellCmd_Ipcs(const char *args)
-{
-    (void)args;
-
-    RingBufStats stats;
-    IPC_RingDemoGetStats(&stats);
-
-    PRT_Printf("Ring buffer size: %u\n", stats.ringSize);
-    PRT_Printf("writeIndex = %u, readIndex = %u\n",
-               stats.writeIndex, stats.readIndex);
-    PRT_Printf("Produced total = %u, Consumed total = %u\n",
-               stats.producedTotal, stats.consumedTotal);
-
-    PRT_Printf("Per Producer:\n");
-    for (U32 i = 0; i < IPC_PRODUCER_NUM; i++) {
-        PRT_Printf("  P%u: %u\n", i + 1, stats.perProducer[i]);
-    }
-
-    PRT_Printf("Per Consumer:\n");
-    for (U32 i = 0; i < IPC_CONSUMER_NUM; i++) {
-        PRT_Printf("  C%u: %u\n", i + 1, stats.perConsumer[i]);
-    }
-
-    PRT_Printf("Buffer snapshot:\n");
-    for (U32 i = 0; i < stats.ringSize; i++) {
-        PRT_Printf("  slot[%u] = %d\n", i, stats.buffer[i]);
-    }
-}
-
 static void ShellCmd_Demo(const char *args)
 {
     (void)args;
     U32 ret;
-
+    
     PRT_Printf("\n========== 启动优先级反转演示 ==========\n");
     PRT_Printf("提示：演示任务将在后台运行\n");
     PRT_Printf("可以使用 'ps' 查看任务状态\n");
@@ -228,7 +187,7 @@ static void ShellCmd_Demo(const char *args)
     PRT_Printf("Shell 优先级：9（低于演示任务，演示任务结束后再运行）\n");
     PRT_Printf("注意：演示任务运行期间 Shell 无法响应\n");
     PRT_Printf("      演示任务会自动结束，结束后 Shell 会恢复并显示提示符\n\n");
-
+    
     ret = CreatePriorityInversionDemo();
     if (ret == OS_OK) {
         PRT_Printf("[Demo] 优先级反转演示任务已创建\n");
@@ -296,6 +255,9 @@ OS_SEC_TEXT void ShellTask(uintptr_t param1, uintptr_t param2,
     while (1) {
         PRT_Printf("\nminiEuler # ");
         idx = 0;
+        
+        /* 刷新输出缓冲区，确保提示符立即显示 */
+        /* 注意：这里不阻塞，只是打印提示符，然后等待输入 */
 
         for (U32 i = 0; i < SHELL_SHOW_MAX_LEN; i++) {
             cmdBuf[i] = 0;
@@ -303,6 +265,7 @@ OS_SEC_TEXT void ShellTask(uintptr_t param1, uintptr_t param2,
 
         while (1) {
             /* 阻塞等待 UART 收一个字符 */
+            /* 注意：这里会阻塞，直到 UART 中断触发并调用 PRT_SemPost(sem_uart_rx) */
             PRT_SemPend(sem_uart_rx, OS_WAIT_FOREVER);
 
             ch = shellCB->shellBuf[shellCB->shellBufReadOffset];
@@ -351,18 +314,20 @@ OS_SEC_TEXT U32 ShellTaskInit(ShellCB *shellCB)
     struct TskInitParam param = {0};
 
     param.taskEntry = (TskEntryFunc)ShellTask;
-    param.taskPrio  = 9;
+    param.taskPrio  = 9;  // Shell 任务优先级：9（低于演示任务，演示任务结束后再运行）
     param.stackSize = 0x1000;
     param.args[0]   = (uintptr_t)shellCB;
 
     TskHandle tskHandle;
     ret = PRT_TaskCreate(&tskHandle, &param);
     if (ret != OS_OK) {
+        PRT_Printf("[Shell] 创建 Shell 任务失败: 0x%x\n", ret);
         return ret;
     }
 
     ret = PRT_TaskResume(tskHandle);
     if (ret != OS_OK) {
+        PRT_Printf("[Shell] 恢复 Shell 任务失败: 0x%x\n", ret);
         return ret;
     }
 

@@ -1,19 +1,13 @@
 cmake_minimum_required(VERSION 3.12)
 
-# 1. 必须在 project() 之前定义目标系统
-set(CMAKE_SYSTEM_NAME Generic)
-set(CMAKE_SYSTEM_PROCESSOR aarch64)
+set(CMAKE_SYSTEM_NAME "Generic") # 目标系统(baremental)：  cmake/tool_chain/uniproton_tool_chain_gcc_arm64.cmake 写的是Linux
+set(CMAKE_SYSTEM_PROCESSOR "aarch64") # 目标系统CPU
 
-# 2. 定义工具链路径 (使用前修改)
-set(TOOLCHAIN_PATH "/Applications/ArmGNUToolchain/15.2.rel1/aarch64-none-elf")
-
-# 3. 显式指定编译器绝对路径（必须在 project 之前）
-set(CMAKE_C_COMPILER   "${TOOLCHAIN_PATH}/bin/aarch64-none-elf-gcc")
-set(CMAKE_CXX_COMPILER "${TOOLCHAIN_PATH}/bin/aarch64-none-elf-g++")
-set(CMAKE_ASM_COMPILER "${TOOLCHAIN_PATH}/bin/aarch64-none-elf-gcc")
-
-# 4. 告知 CMake 跳过编译器检测（交叉编译裸机程序时非常有用，防止 Clang 干扰）
-set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
+set(TOOLCHAIN_PATH "/home/zzq/aarch64-none-elf") # 修改为交叉工具链实际所在目录 build.py config.xml中定义
+set(CMAKE_C_COMPILER ${TOOLCHAIN_PATH}/bin/aarch64-none-elf-gcc)
+set(CMAKE_CXX_COMPILER ${TOOLCHAIN_PATH}/bin/aarch64-none-elf-g++)
+set(CMAKE_ASM_COMPILER ${TOOLCHAIN_PATH}/bin/aarch64-none-elf-gcc)
+set(CMAKE_LINKER ${TOOLCHAIN_PATH}/bin/aarch64-none-elf-ld)
 
 # 定义编译和链接等选项
 set(CC_OPTION "-Os   -Wformat-signedness    -Wl,--build-id=none   -fno-PIE -fno-PIE --specs=nosys.specs -fno-builtin -fno-dwarf2-cfi-asm -fomit-frame-pointer -fzero-initialized-in-bss -fdollars-in-identifiers -ffunction-sections -fdata-sections -fno-aggressive-loop-optimizations -fno-optimize-strlen -fno-schedule-insns -fno-inline-small-functions -fno-inline-functions-called-once -fno-strict-aliasing -finline-limit=20  -mlittle-endian -nostartfiles -funwind-tables")
@@ -41,4 +35,4 @@ add_subdirectory(bsp) # 包含子文件夹的内容
 add_subdirectory(kernel)
 
 list(APPEND OBJS $<TARGET_OBJECTS:bsp> $<TARGET_OBJECTS:tick> $<TARGET_OBJECTS:task> $<TARGET_OBJECTS:sched> $<TARGET_OBJECTS:sys> $<TARGET_OBJECTS:sem> $<TARGET_OBJECTS:shell>)
-add_executable(${APP} main.c ipc_ring_demo.c test_priority_inversion.c ${OBJS}) # 可执行文件
+add_executable(${APP} main.c test_priority_inversion.c ${OBJS}) # 可执行文件

@@ -24,17 +24,17 @@ OS_SEC_ALW_INLINE INLINE TskPrior OsSemFindHighestWaiterPriority(struct TagSemCb
 {
     struct TagTskCb *taskCb = NULL;
     TskPrior highestPrio = 255;  // 初始化为一个很大的值（低优先级）
-
+    
     if (ListEmpty(&semPended->semList)) {
         return highestPrio;
     }
-
+    
     LIST_FOR_EACH(taskCb, &semPended->semList, struct TagTskCb, pendList) {
         if (taskCb->priority < highestPrio) {
             highestPrio = taskCb->priority;
         }
     }
-
+    
     return highestPrio;
 }
 
@@ -46,42 +46,43 @@ OS_SEC_L0_TEXT void OsPriorityInherit(struct TagSemCb *semPended, struct TagTskC
 {
     struct TagTskCb *ownerTask = NULL;
     TskPrior highestWaiterPrio;
-
+    
     // 如果信号量没有被持有，不需要继承
     if (semPended->semOwner == OS_INVALID_OWNER_ID) {
         return;
     }
-
+    
     // 获取资源持有者
     ownerTask = GET_TCB_HANDLE(semPended->semOwner);
     if (ownerTask == NULL || TSK_IS_UNUSED(ownerTask)) {
         return;
     }
-
+    
     // 查找等待队列中的最高优先级
     highestWaiterPrio = OsSemFindHighestWaiterPriority(semPended);
     if (waiterTask->priority < highestWaiterPrio) {
         highestWaiterPrio = waiterTask->priority;
     }
-
+    
     // 如果持有者优先级低于等待者，需要提升持有者优先级
     if (ownerTask->priority > highestWaiterPrio) {
         // 保存原始优先级（如果当前优先级等于原始优先级，说明还没有进行过继承）
         if (ownerTask->priority == ownerTask->originalPriority) {
             ownerTask->originalPriority = ownerTask->priority;
         }
-
+        
         // 提升持有者优先级到等待者的优先级
         TskPrior oldPrio = ownerTask->priority;
         ownerTask->priority = highestWaiterPrio;
-
+        
         // 如果持有者在就绪队列中，需要重新加入队列（因为优先级改变了）
         if (TSK_STATUS_TST(ownerTask, OS_TSK_READY)) {
             OsTskReadyDel(ownerTask);
             OsTskReadyAdd(ownerTask);
         }
-
+        
         // 调试输出
+        extern U32 PRT_Printf(const char *format, ...);
         PRT_Printf("[PriorityInherit] Task PID=%d: priority %d -> %d (inherited from waiter PID=%d, prio=%d)\n",
                    ownerTask->taskPid, oldPrio, ownerTask->priority,
                    waiterTask->taskPid, waiterTask->priority);
@@ -96,34 +97,35 @@ OS_SEC_L0_TEXT void OsPriorityRestore(struct TagSemCb *semPosted)
 {
     struct TagTskCb *ownerTask = NULL;
     TskPrior highestWaiterPrio;
-
+    
     // 如果信号量没有被持有，不需要恢复
     if (semPosted->semOwner == OS_INVALID_OWNER_ID) {
         return;
     }
-
+    
     // 获取资源持有者
     ownerTask = GET_TCB_HANDLE(semPosted->semOwner);
     if (ownerTask == NULL || TSK_IS_UNUSED(ownerTask)) {
         return;
     }
-
+    
     // 如果当前优先级等于原始优先级，说明没有进行过优先级继承，不需要恢复
     if (ownerTask->priority == ownerTask->originalPriority) {
         return;
     }
-
+    
     // 查找等待队列中剩余任务的最高优先级
     highestWaiterPrio = OsSemFindHighestWaiterPriority(semPosted);
-
+    
     // 如果还有更高优先级的等待者，保持继承的优先级
     if (highestWaiterPrio < ownerTask->priority) {
         // 还有更高优先级的等待者，继续继承
         TskPrior oldPrio = ownerTask->priority;
         ownerTask->priority = highestWaiterPrio;
+        extern U32 PRT_Printf(const char *format, ...);
         PRT_Printf("[PriorityInherit] Task PID=%d: priority %d -> %d (still has waiters with prio=%d)\n",
                    ownerTask->taskPid, oldPrio, ownerTask->priority, highestWaiterPrio);
-
+        
         // 如果持有者在就绪队列中，需要重新加入队列（因为优先级改变了）
         if (TSK_STATUS_TST(ownerTask, OS_TSK_READY)) {
             OsTskReadyDel(ownerTask);
@@ -131,18 +133,19 @@ OS_SEC_L0_TEXT void OsPriorityRestore(struct TagSemCb *semPosted)
         }
         return;
     }
-
+    
     // 没有更高优先级的等待者，恢复原始优先级
     TskPrior oldPrio = ownerTask->priority;
     ownerTask->priority = ownerTask->originalPriority;
-
+    
     // 如果持有者在就绪队列中，需要重新加入队列（因为优先级改变了）
     if (TSK_STATUS_TST(ownerTask, OS_TSK_READY)) {
         OsTskReadyDel(ownerTask);
         OsTskReadyAdd(ownerTask);
     }
-
+    
     // 调试输出
+    extern U32 PRT_Printf(const char *format, ...);
     PRT_Printf("[PriorityRestore] Task PID=%d: priority %d -> %d (restored to original)\n",
                ownerTask->taskPid, oldPrio, ownerTask->priority);
 }
@@ -179,6 +182,7 @@ OS_SEC_L0_TEXT void OsSemPendListPut(struct TagSemCb *semPended, U32 timeOut)
     runTsk->taskSem = (void *)semPended;
 
     TSK_STATUS_SET(runTsk, OS_TSK_PEND);
+    
     /* 根据唤醒方式挂接此链表，同优先级再按FIFO子顺序插入 */
     if (semPended->semMode == SEM_MODE_PRIOR) {
         LIST_FOR_EACH(curTskCb, &semPended->semList, struct TagTskCb, pendList) {
@@ -192,7 +196,7 @@ OS_SEC_L0_TEXT void OsSemPendListPut(struct TagSemCb *semPended, U32 timeOut)
     }
     /* 如果到这里，说明是FIFO方式；或者是优先级方式且挂接首个节点或者挂接尾节点 */
     ListTailAdd(pendObj, &semPended->semList);
-
+    
     /* 优先级继承：在将任务加入等待队列后，检查是否需要提升持有者优先级 */
     OsPriorityInherit(semPended, runTsk);
 }
@@ -306,7 +310,7 @@ OS_SEC_ALW_INLINE INLINE void OsSemPostSchePre(struct TagSemCb *semPosted)
 
     // 保存旧持有者ID，用于优先级恢复
     oldOwnerId = semPosted->semOwner;
-
+    
     // 优先级恢复：在从等待队列移除任务之前，恢复旧持有者的优先级
     // 这样OsPriorityRestore可以正确检查等待队列中剩余的任务
     if (oldOwnerId != OS_INVALID_OWNER_ID) {
@@ -315,7 +319,8 @@ OS_SEC_ALW_INLINE INLINE void OsSemPostSchePre(struct TagSemCb *semPosted)
             OsPriorityRestore(semPosted);
         }
     }
-
+    
+    // 从等待队列获取第一个任务
     resumedTask = OsSemPendListGet(semPosted);
     semPosted->semOwner = resumedTask->taskPid;
 }
@@ -373,7 +378,6 @@ OS_SEC_L0_TEXT U32 PRT_SemPost(SemHandle semHandle)
         OsPriorityRestore(semPosted);
         semPosted->semCount++;
         semPosted->semOwner = OS_INVALID_OWNER_ID;
-
     }
 
     OsIntRestore(intSave);
