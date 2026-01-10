@@ -1,0 +1,15 @@
+{
+	"InstallScripts" : 
+	[
+		"/Users/yinjunhang/lab9/build/cmake_install.cmake",
+		"/Users/yinjunhang/lab9/build/bsp/cmake_install.cmake",
+		"/Users/yinjunhang/lab9/build/kernel/cmake_install.cmake",
+		"/Users/yinjunhang/lab9/build/kernel/tick/cmake_install.cmake",
+		"/Users/yinjunhang/lab9/build/kernel/task/cmake_install.cmake",
+		"/Users/yinjunhang/lab9/build/kernel/sched/cmake_install.cmake",
+		"/Users/yinjunhang/lab9/build/kernel/sys/cmake_install.cmake",
+		"/Users/yinjunhang/lab9/build/kernel/sem/cmake_install.cmake",
+		"/Users/yinjunhang/lab9/build/kernel/shell/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

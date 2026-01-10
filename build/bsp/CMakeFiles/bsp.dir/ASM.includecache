@@ -1,0 +1,16 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/Users/yinjunhang/lab9/src/bsp/cache_asm.S
+
+/Users/yinjunhang/lab9/src/bsp/prt_reset_vector.S
+
+/Users/yinjunhang/lab9/src/bsp/prt_vector.S
+
+/Users/yinjunhang/lab9/src/bsp/start.S
+
